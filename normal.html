@@ -1,0 +1,752 @@
+```html
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Normal Map Sprite Lighting</title>
+
+<style>
+* {
+    box-sizing: border-box;
+}
+
+body {
+    margin: 0;
+    background: #15171b;
+    color: #eee;
+    font-family: Arial, sans-serif;
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 30px;
+}
+
+.container {
+    width: min(1000px, 95vw);
+}
+
+h1 {
+    margin: 0 0 8px;
+    font-size: 22px;
+    font-weight: 500;
+}
+
+.description {
+    color: #888;
+    margin-bottom: 20px;
+}
+
+.files {
+    display: flex;
+    gap: 15px;
+    flex-wrap: wrap;
+    margin-bottom: 15px;
+}
+
+.file {
+    background: #202329;
+    border: 1px solid #363a42;
+    padding: 12px;
+    border-radius: 8px;
+}
+
+.file label {
+    display: block;
+    font-size: 13px;
+    color: #aaa;
+    margin-bottom: 7px;
+}
+
+input[type="file"] {
+    color: #aaa;
+}
+
+.canvas-wrap {
+    background:
+        radial-gradient(circle at center, #30343b, #1d2025);
+    border: 1px solid #3a3e46;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+canvas {
+    display: block;
+    width: 100%;
+    height: auto;
+    cursor: grab;
+}
+
+canvas.dragging {
+    cursor: grabbing;
+}
+
+.controls {
+    margin-top: 15px;
+    display: flex;
+    gap: 25px;
+    flex-wrap: wrap;
+    padding: 15px;
+    background: #1e2126;
+    border: 1px solid #343840;
+    border-radius: 8px;
+}
+
+.control {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.control label {
+    color: #aaa;
+    font-size: 14px;
+}
+
+input[type="range"] {
+    width: 150px;
+}
+
+.value {
+    width: 50px;
+    font-family: monospace;
+}
+
+.hint {
+    margin-top: 12px;
+    color: #666;
+    font-size: 13px;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>2D Normal Map Lighting</h1>
+
+<div class="description">
+    Select your sprite and normal map. Then drag the light around.
+</div>
+
+<div class="files">
+
+    <div class="file">
+        <label>Color Sprite</label>
+        <input id="spriteFile" type="file" accept=".svg,image/svg+xml">
+    </div>
+
+    <div class="file">
+        <label>Normal Map</label>
+        <input id="normalFile" type="file" accept=".svg,image/svg+xml">
+    </div>
+
+</div>
+
+<div class="canvas-wrap">
+    <canvas id="canvas" width="900" height="600"></canvas>
+</div>
+
+<div class="controls">
+
+    <div class="control">
+        <label>Light height</label>
+        <input id="height" type="range"
+               min="0.1" max="5" step="0.1" value="1.5">
+        <span id="heightValue" class="value">1.5</span>
+    </div>
+
+    <div class="control">
+        <label>Radius</label>
+        <input id="radius" type="range"
+               min="50" max="600" value="300">
+        <span id="radiusValue" class="value">300</span>
+    </div>
+
+    <div class="control">
+        <label>Intensity</label>
+        <input id="intensity" type="range"
+               min="0" max="3" step="0.05" value="1.5">
+        <span id="intensityValue" class="value">1.5</span>
+    </div>
+
+</div>
+
+<div class="hint">
+    R = X direction &nbsp; G = Y direction &nbsp; B = Z direction
+</div>
+
+</div>
+
+
+<script>
+
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+
+
+// ---------------------------------------------------------
+// Sprite configuration
+// ---------------------------------------------------------
+
+const spriteX = 250;
+const spriteY = 150;
+
+const spriteW = 400;
+const spriteH = 300;
+
+
+// ---------------------------------------------------------
+// Offscreen canvases
+// ---------------------------------------------------------
+
+const spriteCanvas = document.createElement("canvas");
+const normalCanvas = document.createElement("canvas");
+
+spriteCanvas.width = spriteW;
+spriteCanvas.height = spriteH;
+
+normalCanvas.width = spriteW;
+normalCanvas.height = spriteH;
+
+const spriteCtx = spriteCanvas.getContext("2d");
+const normalCtx = normalCanvas.getContext("2d");
+
+
+// ---------------------------------------------------------
+// Data
+// ---------------------------------------------------------
+
+let spriteData = null;
+let normalData = null;
+
+let spriteReady = false;
+let normalReady = false;
+
+
+// ---------------------------------------------------------
+// Lighting
+// ---------------------------------------------------------
+
+const light = {
+    x: 650,
+    y: 180
+};
+
+let lightHeight = 0;
+let lightRadius = 300;
+let lightIntensity = 1.5;
+
+
+// ---------------------------------------------------------
+// Load local files
+// ---------------------------------------------------------
+
+document.getElementById("spriteFile").addEventListener(
+    "change",
+    e => {
+
+        const file = e.target.files[0];
+
+        if (!file)
+            return;
+
+        const url = URL.createObjectURL(file);
+
+        loadImage(url, img => {
+
+            spriteCtx.clearRect(
+                0,
+                0,
+                spriteW,
+                spriteH
+            );
+
+            spriteCtx.drawImage(
+                img,
+                0,
+                0,
+                spriteW,
+                spriteH
+            );
+
+            spriteData =
+                spriteCtx.getImageData(
+                    0,
+                    0,
+                    spriteW,
+                    spriteH
+                );
+
+            spriteReady = true;
+
+            URL.revokeObjectURL(url);
+
+            render();
+        });
+    }
+);
+
+
+document.getElementById("normalFile").addEventListener(
+    "change",
+    e => {
+
+        const file = e.target.files[0];
+
+        if (!file)
+            return;
+
+        const url = URL.createObjectURL(file);
+
+        loadImage(url, img => {
+
+            normalCtx.clearRect(
+                0,
+                0,
+                spriteW,
+                spriteH
+            );
+
+            normalCtx.drawImage(
+                img,
+                0,
+                0,
+                spriteW,
+                spriteH
+            );
+
+            normalData =
+                normalCtx.getImageData(
+                    0,
+                    0,
+                    spriteW,
+                    spriteH
+                );
+
+            normalReady = true;
+
+            URL.revokeObjectURL(url);
+
+            render();
+        });
+    }
+);
+
+
+// ---------------------------------------------------------
+// Image loader
+// ---------------------------------------------------------
+
+function loadImage(url, callback) {
+
+    const img = new Image();
+
+    img.onload = () => {
+        callback(img);
+    };
+
+    img.onerror = () => {
+        alert("Could not load the SVG.");
+    };
+
+    img.src = url;
+}
+
+
+// ---------------------------------------------------------
+// Render
+// ---------------------------------------------------------
+
+function render() {
+
+    ctx.fillStyle = "#202329";
+
+    ctx.fillRect(
+        0,
+        0,
+        canvas.width,
+        canvas.height
+    );
+
+
+    if (!spriteReady || !normalReady) {
+
+        ctx.fillStyle = "#666";
+
+        ctx.font = "18px Arial";
+        ctx.textAlign = "center";
+
+        ctx.fillText(
+            "Select sprite.svg and sprite_norm.svg above",
+            canvas.width / 2,
+            canvas.height / 2
+        );
+
+        drawLight();
+
+        return;
+    }
+
+
+    const output =
+        ctx.createImageData(
+            canvas.width,
+            canvas.height
+        );
+
+
+    for (let y = 0; y < spriteH; y++) {
+
+        for (let x = 0; x < spriteW; x++) {
+
+            const i =
+                (y * spriteW + x) * 4;
+
+            const alpha =
+                spriteData.data[i + 3];
+
+            if (alpha === 0)
+                continue;
+
+
+            // -------------------------------------------------
+            // Read normal map
+            // -------------------------------------------------
+
+            let nx = -(normalData.data[i] / 255 * 2 - 1);
+let ny = -(normalData.data[i + 1] / 255 * 2 - 1);
+let nz = normalData.data[i + 2] / 255 * 2 - 1;
+
+
+            // Normalize
+
+            const normalLength =
+                Math.sqrt(
+                    nx * nx +
+                    ny * ny +
+                    nz * nz
+                );
+
+            nx /= normalLength;
+            ny /= normalLength;
+            nz /= normalLength;
+
+
+            // -------------------------------------------------
+            // Light direction
+            // -------------------------------------------------
+
+            const px = spriteX + x;
+            const py = spriteY + y;
+
+            let lx = light.x - px;
+            let ly = light.y - py;
+            let lz = lightHeight * 100;
+
+
+            const distance =
+                Math.sqrt(
+                    lx * lx +
+                    ly * ly +
+                    lz * lz
+                );
+
+            lx /= distance;
+            ly /= distance;
+            lz /= distance;
+
+
+            // -------------------------------------------------
+            // Normal · Light
+            // -------------------------------------------------
+
+            let brightness =
+                nx * lx +
+                ny * ly +
+                nz * lz;
+
+            brightness =
+                Math.max(0, brightness);
+
+
+            // -------------------------------------------------
+            // Distance attenuation
+            // -------------------------------------------------
+
+            const flatDistance =
+                Math.sqrt(
+                    (light.x - px) ** 2 +
+                    (light.y - py) ** 2
+                );
+
+            let attenuation =
+                1 -
+                flatDistance / lightRadius;
+
+            attenuation =
+                Math.max(0, attenuation);
+
+            attenuation *= attenuation;
+
+
+            brightness *=
+                attenuation *
+                lightIntensity;
+
+
+            // Ambient light
+
+            brightness =
+                0.18 + brightness;
+
+            brightness =
+                Math.min(1, brightness);
+
+
+            // -------------------------------------------------
+            // Write output
+            // -------------------------------------------------
+
+            const outputIndex =
+                (py * canvas.width + px) * 4;
+
+            output.data[outputIndex] =
+                spriteData.data[i] * brightness;
+
+            output.data[outputIndex + 1] =
+                spriteData.data[i + 1] * brightness;
+
+            output.data[outputIndex + 2] =
+                spriteData.data[i + 2] * brightness;
+
+            output.data[outputIndex + 3] =
+                alpha;
+        }
+    }
+
+
+    ctx.putImageData(output, 0, 0);
+
+    drawLight();
+}
+
+
+// ---------------------------------------------------------
+// Draw light indicator
+// ---------------------------------------------------------
+
+function drawLight() {
+
+    // Radius
+
+    ctx.strokeStyle =
+        "rgba(255,220,100,.2)";
+
+    ctx.lineWidth = 1;
+
+    ctx.beginPath();
+
+    ctx.arc(
+        light.x,
+        light.y,
+        lightRadius,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.stroke();
+
+
+    // Light
+
+    const gradient =
+        ctx.createRadialGradient(
+            light.x,
+            light.y,
+            0,
+            light.x,
+            light.y,
+            30
+        );
+
+    gradient.addColorStop(
+        0,
+        "rgba(255,255,220,1)"
+    );
+
+    gradient.addColorStop(
+        0.15,
+        "rgba(255,220,100,.9)"
+    );
+
+    gradient.addColorStop(
+        1,
+        "rgba(255,180,40,0)"
+    );
+
+    ctx.fillStyle = gradient;
+
+    ctx.beginPath();
+
+    ctx.arc(
+        light.x,
+        light.y,
+        30,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+
+
+    // Center
+
+    ctx.fillStyle = "#fff";
+
+    ctx.beginPath();
+
+    ctx.arc(
+        light.x,
+        light.y,
+        5,
+        0,
+        Math.PI * 2
+    );
+
+    ctx.fill();
+}
+
+
+// ---------------------------------------------------------
+// Animation
+// ---------------------------------------------------------
+
+function loop() {
+
+    render();
+
+    requestAnimationFrame(loop);
+}
+
+loop();
+
+
+// ---------------------------------------------------------
+// Mouse dragging
+// ---------------------------------------------------------
+
+let dragging = false;
+
+
+function getMousePosition(e) {
+
+    const rect =
+        canvas.getBoundingClientRect();
+
+    return {
+
+        x:
+            (e.clientX - rect.left) *
+            canvas.width /
+            rect.width,
+
+        y:
+            (e.clientY - rect.top) *
+            canvas.height /
+            rect.height
+    };
+}
+
+
+canvas.addEventListener(
+    "mousedown",
+    e => {
+
+        const p =
+            getMousePosition(e);
+
+        const dx =
+            p.x - light.x;
+
+        const dy =
+            p.y - light.y;
+
+        if (Math.sqrt(dx * dx + dy * dy) < 45) {
+
+            dragging = true;
+
+            canvas.classList.add("dragging");
+        }
+    }
+);
+
+
+window.addEventListener(
+    "mousemove",
+    e => {
+
+        if (!dragging)
+            return;
+
+        const p =
+            getMousePosition(e);
+
+        light.x = p.x;
+        light.y = p.y;
+    }
+);
+
+
+window.addEventListener(
+    "mouseup",
+    () => {
+
+        dragging = false;
+
+        canvas.classList.remove("dragging");
+    }
+);
+
+
+// ---------------------------------------------------------
+// Controls
+// ---------------------------------------------------------
+
+document.getElementById("height").oninput = e => {
+
+    lightHeight =
+        Number(e.target.value);
+
+    document.getElementById("heightValue")
+        .textContent =
+        lightHeight.toFixed(1);
+};
+
+
+document.getElementById("radius").oninput = e => {
+
+    lightRadius =
+        Number(e.target.value);
+
+    document.getElementById("radiusValue")
+        .textContent =
+        lightRadius;
+};
+
+
+document.getElementById("intensity").oninput = e => {
+
+    lightIntensity =
+        Number(e.target.value);
+
+    document.getElementById("intensityValue")
+        .textContent =
+        lightIntensity.toFixed(2);
+};
+
+</script>
+
+</body>
+</html>
+```
