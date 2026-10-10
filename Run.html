@@ -1,0 +1,259 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title></title>
+<meta http-equiv="x-ua-compatible" content="IE=11"/>
+<hta:Application
+ ApplicationName=""
+ ID=""
+
+ InnerBorder="no"
+ Scroll="no"
+ ContextMenu="no"
+ Selection="no"
+ SingleInstance="yes"
+ Icon="appicon.ico"
+ version="1.0"
+ WINDOWSTATE="maximize"
+<>
+</head>
+<body onload="onload();" style="overflow:hidden;">
+	<audio id="sound_presong" src="presong.wav" autoplay loop></audio>
+	<audio id="sound_runsong" src="runsong.wav" loop></audio>
+	<audio id="sound_deadsong" src="deadsong.wav"></audio>
+	<audio id="sound_terere" src="terere.wav"></audio>
+	<audio id="sound_ball" src="ball.wav"></audio>
+	<audio id="sound_die" src="die.wav"></audio>
+	<audio id="sound_jump1" src="jump1.wav"></audio>
+	<audio id="sound_jump2" src="jump2.wav"></audio>
+	<audio id="sound_jump3" src="jump3.wav"></audio>
+	<audio id="sound_jump4" src="jump4.wav"></audio>
+	<div id="screen" style="width:720px;height:1600px;background-color:rgb(255,20,20);color:white;position:absolute;left:0;top:0;transform:none;overflow:hidden;transition:top 0.1s;">
+		<img src="backg.png" onclick="step(2*mult_j);" style="width:720px;height:1600px;"></img>
+		<img id="title" src="title.png" style="width:90%;position:absolute;left:-100%;top:8%;transform:rotate(-5deg) translate(-52%,0);animation:title 10s infinite;transition:left 0.5s;"></img>
+		<img id="tap" src="tap.png" style="width:50%;position:absolute;left:50%;top:20%;transform:rotate(-5deg) translate(-50%,0);opacity:0;transition:opacity 0.2s;"></img>
+		<img id="play" onclick="play();" src="play.png" style="width:30%;position:absolute;left:-100%;top:35%;transform:rotate(-5deg) translate(-50%,0);animation:button 3s infinite;transition:left 0.5s;"></img>
+		<div id="map" style="width:10000%;height:10%;position:absolute;left:40%;top:61%;transition:left 0.5s;"></div>
+		<img id="fx" src="hearts.png" style="width:10%;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:none;"></img>
+		<img id="fx2" src="hearts.png" style="width:10%;position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);display:none;"></img>
+		<div id="ball" style="width:20%;height:10%;position:absolute;left:40%;top:60%;transform:scale(0.2,0.2) translate(-100%,-1000%);transition:transform 0.7s ease-in;opacity:0;">
+			<img src="metal.png" style="width:100%;position:absolute;left:0%;top:0;transform:scale(1,1) translate(0,-40%);transition:transform 0.2s;"></img>
+		</div>
+		<div id="smoke" style="width:40%;height:10%;position:absolute;left:30%;top:70%;transform:scale(3,3);transition:transform 0.7s ease-in;display:none;">
+			<img id="smoke_sprite" src="smoke.png" style="width:100%;position:absolute;left:0%;top:0;transform:scale(1,1) translate(0,-40%);transition:transform 0.2s;"></img>
+		</div>
+		<div id="player" onclick="if(sapochange==true){if(sapo=='a'){sapo='o';}else{sapo='a';}document.getElementById('sap').src='sap'+sapo+'.png';}else{step(1);}" style="width:20%;height:10%;position:absolute;left:-50%;top:60%;transform:translate(0,0);transition:left 1s, top 0.5s, transform 0.2s;animation:alive 1s infinite;">
+			<img id="shade" src="shade.png" style="width:100%;position:absolute;left:0;top:50%;"></img>
+			<img id="sap" src="sapo.png" style="width:100%;position:absolute;left:0;top:0;transform:translate(0,-40%);transition:transform 0.5s;"></img>
+			<img id="eye1" src="eye1.png" style="width:7%;position:absolute;left:30%;top:5%;transform:translate(0,0);transition:transform 0.2s;"></img>
+			<img id="eye2" src="eye2.png" style="width:17%;position:absolute;left:62%;top:-1%;transform:translate(0,0);transition:transform 0.5s;"></img>
+			<img id="tere" src="tere.png" style="width:200%;position:absolute;left:-50%;top:0;transform:scale(1,0) translate(0,-40%);transition:transform 0.2s;"></img>
+		</div>
+		<img id="omano" src="omano.png" style="width:100%;position:absolute;left:0%;top:15%;display:none;"></img>
+		<img id="home" onclick="home();" style="width:10%;position:absolute;left:0;top:-100%;transition:top 0.5s;" src="home.png"></img><div id="health" style="width:10%;height:5%;position:absolute;left:100%;top:-100%;transform:translate(-100%,0);transition:top 0.5s;"><img style="width:100%;position:absolute;left:0;top:0;" src="button.png"></img><div style="width:10%;position:absolute;left:20%;top:10%;transform:translate(0,0);"><b>&#9829;</b><b id="health_value">9</b></div></div>
+		<div style="padding:20px;"></div>
+		<img id="splash" src="splash.png" style="position:absolute;left:50%;top:40%;width:50%;transform:translate(-50%,0);opacity:0;transition:opacity 2s;" onclick="document.getElementById('splash').style.opacity='0';setTimeout(function(){home();document.getElementById('player').style.left='40%';document.getElementById('splash').style.display='none';},0*1500);"></img>
+	</div>
+	<div id="log" style="color:red;position:fixed;left:0;top:0;z-index:99;"></div>
+	<style>
+		*{padding:0;margin:0;user-select:none;color:black;font-size:30pt;}
+		html,body{background-color:black;}
+		.mapx{width:0.2%;opacity:1;transform:scale(1,1);transition:transform 0.2s, opacity 0.4s;}
+		@keyframes title{
+			0%{transform:rotate(-5deg) translate(-52%,0);}
+			50%{transform:rotate(5deg) translate(-48%,0);}
+			100%{transform:rotate(-5%deg) translate(-52%,0);}
+		}
+		@keyframes button{
+			0%{transform:rotate(-5deg) translate(-50%,0);}
+			60%{transform:rotate(0deg) translate(-50%,0);}
+			70%{transform:rotate(5deg) translate(-50%,0);}
+			80%{transform:rotate(-5deg) translate(-50%,0);}
+			100%{transform:rotate(-5deg) translate(-50%,0);}
+		}
+		@keyframes alive{
+			0%{transform:scale(1,1);}
+			50%{transform:scale(1.05,0.95);}
+			100%{transform:scale(1,1);}
+		}
+		@keyframes fx{
+			0%{transform:rotate(-10deg) translate(0,0) scale(1,1);}
+			100%{transform:rotate(-10deg) translate(500%,-600%) scale(0.2,0.2);}
+		}
+	</style>
+	<script>
+		function onload(){
+			setInterval(loop,500);
+			setTimeout(function(){
+			document.getElementById('splash').style.opacity='1';
+			},0*500);
+		}
+		var sapo='o';
+		var blink_timer=0;
+		var mult_j=1;
+		function loop(){
+			document.getElementById('screen').style.transform='translate('+((window.innerWidth/2.05)-360)+'px,'+((window.innerWidth/0.93)-795)+'px) scale('+(window.innerWidth/740)+','+(window.innerWidth/740)+')';
+			blink_timer+=1;if((blink_timer==3)||(blink_timer==4)||(blink_timer==6)){eyes(random(-200,200),random(-200,200));}if(blink_timer>9){blink();blink_timer=0;}
+			document.getElementById('health_value').innerHTML=lives;
+		}
+		var mobj='';
+		var steps=0;
+		var lives=0;
+		var sapochange=true;
+		function play(){
+			document.getElementById('sound_runsong').play();
+			document.getElementById('sound_presong').pause();
+			document.getElementById('sound_presong').currentTime=0;
+			stepping=false;
+			if(lives<1){lives=6;}else{lives=lives;}
+			var map='';
+			mobj='';
+			steps=0;
+			document.getElementById('map').style.left='40%';
+			map+='<img class="mapx" onclick="step(1);" src="grass.png"></img><img onclick="step(1);" class="mapx" src="grass.png"></img><img onclick="step(1);" class="mapx" src="grass.png"></img>';
+			mobj+='g,g,g,';
+			for(var i=0;i<90;i++){
+				if((random(0,8)>1)){map+='<img class="mapx" onclick="step(1);" src="grass.png"></img>';mobj+='g,';}else{map+='<img id="box'+(i+3)+'" onclick="step(1);" class="mapx" src="box.png"></img>';mobj+='b,';}
+			}
+			document.getElementById('map').innerHTML=map;
+			document.getElementById('tap').style.opacity=1;
+			setTimeout(function(){document.getElementById('tap').style.opacity=0;},500);
+			document.getElementById('home').style.top='0';
+			document.getElementById('health').style.top='0';
+			document.getElementById('title').style.left='-100%';
+			document.getElementById('play').style.left='-100%';
+		}
+		function home(){
+			document.getElementById('sound_presong').play();
+			document.getElementById('sound_runsong').pause();
+			document.getElementById('sound_runsong').currentTime=0;
+			lives=0;
+			document.getElementById('map').style.left='40%';
+			stepping=true;
+			document.getElementById('map').innerHTML='';
+			document.getElementById('home').style.top='-100%';
+			document.getElementById('health').style.top='-100%';
+			document.getElementById('title').style.left='50%';
+			document.getElementById('play').style.left='50%';
+			document.getElementById('omano').style.display='none';
+			document.getElementById('player').style.animation='alive 1s infinite';
+		}
+		function blink(){
+			document.getElementById('sap').src='sap'+sapo+'b.png';
+			setTimeout(function(){document.getElementById('sap').src='sap'+sapo+'.png';},100);
+		}
+		function eyes(x1,y1){
+			document.getElementById('eye1').style.transform='translate('+x1+'%,'+y1+'%)';
+			if(x1<0){x1=0;}
+			document.getElementById('eye2').style.transform='translate('+(x1/5)+'%,'+(y1/5)+'%)';
+		}
+		var stepping=false;
+		function step(nr){
+			if((stepping==false)&&(lives>0)){
+				if(nr==1){document.getElementById('sound_jump3').play();}else{document.getElementById('sound_jump'+random(1,4)).play();}
+				stepping=true;
+				steps+=nr;
+				console.log(steps);
+				document.getElementById('player').style.animation='';
+				document.getElementById('player').style.transition='left 1s, top 0.1s, transform 0.2s';
+				document.getElementById('player').style.transform='rotate(20deg) scale(0.8,1.2)';
+				document.getElementById('player').style.top=(60-(nr*5))+'%';
+				document.getElementById('player').style.left='50%';
+				document.getElementById('shade').style.transition='left 1s, top 0.1s, transform 0.2s';
+				document.getElementById('shade').style.top=(50+(nr*57))+'%';
+				document.getElementById('player').style.transform='rotate(-10deg) scale(1.2,0.8)';
+				document.getElementById('map').style.left=(parseFloat(document.getElementById('map').style.left.replace('%',''))-(nr*20))+'%';
+				setTimeout(function(){document.getElementById('player').style.transform='rotate(20deg) scale(0.8,1.2)';document.getElementById('player').style.transform='rotate(0deg) scale(1,1)';},100);
+				setTimeout(function(){
+					document.getElementById('player').style.transition='left 1s, top 0.5s, transform 0.2s';document.getElementById('player').style.left='40%';document.getElementById('player').style.top='60%';document.getElementById('player').style.animation='alive 1s infinite';document.getElementById('shade').style.transition='left 1s, top 0.5s, transform 0.2s';document.getElementById('shade').style.top='50%';
+					setTimeout(function(){
+						stepping=false;
+						if(mobj.split(',')[steps]=='b'){document.getElementById('box'+steps).style.transform='scale(1.5,0.5)';setTimeout(function(){document.getElementById('box'+steps).src='box_expl.png';document.getElementById('box'+steps).style.opacity=0;},100);box();}
+					},100);
+				},250);
+				if(steps>93){play();}
+			}
+		}
+		function box(){
+			var num=random(1,4);
+			if((num==1)||(num==2)||(num==3)){
+				ball();
+			}
+			if(num==4){
+				tere();
+			}
+		}
+		function tere(){
+			document.getElementById('sound_terere').play();
+			fx('hearts');
+			sapochange=false;
+			lives+=1;
+			document.getElementById('tere').style.transform='scale(1,1) translate(0,-40%)';
+			setTimeout(function(){document.getElementById('tere').style.transform='scale(1,0) translate(0,-40%)';setTimeout(function(){sapochange=true;},200);},3000);
+		}
+		function ball(){
+			document.getElementById('sound_ball').play();
+			document.getElementById('sound_ball').currentTime=0;
+			stepping=true;
+			lives-=1;
+			document.getElementById('ball').style.opacity=1;
+			document.getElementById('ball').style.transform='scale(1,1) translate(0,0)';
+			setTimeout(function(){
+			if(lives<1){die();}
+			document.getElementById('smoke_sprite').src='smoke.png';
+			document.getElementById('smoke').style.display='block';
+			document.getElementById('player').style.animation='';
+			document.getElementById('player').style.transition='left 1s, top 0.5s, transform 0.5s';
+			document.getElementById('player').style.transform='scale(1,0.3) translate(0,0)';
+			setTimeout(function(){
+			document.getElementById('ball').style.opacity=0;
+			document.getElementById('ball').style.transform='scale(0.2,0.2) translate(-100%,-1000%)';
+			stepping=false;shake();
+			if(lives>0){document.getElementById('player').style.animation='alive 1s infinite';}
+			document.getElementById('player').style.transition='left 1s, top 0.5s, transform 0.2s';
+			document.getElementById('smoke_sprite').src='smoke2.png';
+			setTimeout(function(){
+			document.getElementById('smoke').style.display='none';
+			},200);
+			},100);
+			},700);
+		}
+		function fx(type){
+			document.getElementById('fx').src=type+'.png';
+			document.getElementById('fx').style.display='block';
+			document.getElementById('fx').style.animation='fx 2s ease-out';
+			document.getElementById('fx2').src=type+'.png';
+			document.getElementById('fx2').style.display='block';
+			document.getElementById('fx2').style.animation='fx 2.5s ease-out';
+			setTimeout(function(){
+			document.getElementById('fx').style.display='none';
+			document.getElementById('fx').style.animation='';
+			},2000);
+			setTimeout(function(){
+			document.getElementById('fx2').style.display='none';
+			document.getElementById('fx2').style.animation='';
+			},2500);
+		}
+		function die(){
+			document.getElementById('sound_runsong').pause();
+			document.getElementById('sound_runsong').currentTime=0;
+			document.getElementById('sound_die').play();
+			document.getElementById('sound_deadsong').play();
+			document.getElementById('player').style.animation='';
+			document.getElementById('player').style.transition='left 1s, top 0.5s, transform 0.5s';
+			document.getElementById('player').style.transform='scale(1,0.3)';
+			document.getElementById('omano').style.display='block';
+		}
+		function shake(){
+			document.getElementById('screen').style.top='4%';
+			setTimeout(function(){
+			document.getElementById('screen').style.top='-2%';
+			setTimeout(function(){
+			document.getElementById('screen').style.top='0';
+			},100);
+			},100);
+		}
+		function random(min,max){return Math.floor(Math.random()*(max-min+1)+min)}
+	</script>
+</body>
+</html>
